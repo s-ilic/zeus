@@ -1,4 +1,4 @@
-import numpy as np 
+import numpy as np
 from itertools import permutations
 import random
 
@@ -45,7 +45,7 @@ class DifferentialMove:
                 Array of shape ``(nwalkers//2, ndim)`` with the walker positions of the complementary ensemble.
             mu : float
                 The value of the scale factor ``mu``.
-        
+
         Returns
         -------
             directions : array
@@ -59,9 +59,62 @@ class DifferentialMove:
 
         if not self.tune:
             mu = self.mu0
-        
+
         return 2.0 * mu * (X[pairs[0]]-X[pairs[1]]), self.tune
 
+class DifferentialMove_except_some:
+    r"""
+    The `Karamanis & Beutler (2020) <https://arxiv.org/abs/2002.06212>`_ "Differential Move" with parallelization.
+    When this Move is used the walkers move along directions defined by random pairs of walkers sampled (with no
+    replacement) from the complementary ensemble. This is the default choice and performs well along a wide range
+    of target distributions.
+    This modified version makes it so that some dimensions are kept unchanged
+    by the move.
+
+    Parameters
+    ----------
+        tune : bool
+            If True then tune this move. Default is True.
+        mu0 : float
+            Default value of ``mu`` if ``tune=False``.
+
+    """
+
+    def __init__(self, tune=True, mu0=1.0, indexes_to_keep=[]):
+        self.tune = tune
+        self.mu0 = mu0
+        self.itk = indexes_to_keep
+
+
+    def get_direction(self, X, mu):
+        r"""
+        Generate direction vectors.
+
+        Parameters
+        ----------
+            X : array
+                Array of shape ``(nwalkers//2, ndim)`` with the walker positions of the complementary ensemble.
+            mu : float
+                The value of the scale factor ``mu``.
+
+        Returns
+        -------
+            directions : array
+                Array of direction vectors of shape ``(nwalkers//2, ndim)``.
+        """
+
+        nsamples = X.shape[0]
+
+        perms = list(permutations(np.arange(nsamples), 2))
+        pairs = np.asarray(random.sample(perms,nsamples)).T
+
+        if not self.tune:
+            mu = self.mu0
+
+        res = 2.0 * mu * (X[pairs[0]]-X[pairs[1]])
+        res[:, self.itk] = 0.
+
+        return res, self.tune
 
 class GaussianMove:
     r"""
@@ -79,7 +132,7 @@ class GaussianMove:
     """
 
     def __init__(self, tune=False, mu0=1.0, cov=None):
-        self.tune = tune 
+        self.tune = tune
         self.mu0 = mu0
         self.cov = cov
 
@@ -94,7 +147,7 @@ class GaussianMove:
                 Array of shape ``(nwalkers//2, ndim)`` with the walker positions of the complementary ensemble.
             mu : float
                 The value of the scale factor ``mu``.
-        
+
         Returns
         -------
             directions : array
@@ -138,7 +191,7 @@ class GlobalMove:
     """
 
     def __init__(self, tune=True, mu0=1.0, rescale_cov=0.001, n_components=5):
-        
+
         if BayesianGaussianMixture is None:
             raise ImportError("you need sklearn.mixture.BayesianGaussianMixture to use the GlobalMove")
 
@@ -158,13 +211,13 @@ class GlobalMove:
                 Array of shape ``(nwalkers//2, ndim)`` with the walker positions of the complementary ensemble.
             mu : float
                 The value of the scale factor ``mu``.
-        
+
         Returns
         -------
             directions : array
                 Array of direction vectors of shape ``(nwalkers//2, ndim)``.
         """
-        
+
         if not self.tune:
             mu = self.mu0
 
@@ -227,7 +280,7 @@ class KDEMove:
                 Array of shape ``(nwalkers//2, ndim)`` with the walker positions of the complementary ensemble.
             mu : float
                 The value of the scale factor ``mu``.
-        
+
         Returns
         -------
             directions : array
@@ -278,7 +331,7 @@ class RandomMove:
                 Array of shape ``(nwalkers//2, ndim)`` with the walker positions of the complementary ensemble.
             mu : float
                 The value of the scale factor ``mu``.
-        
+
         Returns
         -------
             directions : array
