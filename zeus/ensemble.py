@@ -584,6 +584,9 @@ class EnsembleSampler:
                 if output_raw:
                     Z_raw = np.array([])
                     X_raw = np.empty((0, self.ndim))
+                else:
+                    Z_raw = None
+                    X_raw = None
 
                 cnt = 0
                 # Stepping-Out procedure
