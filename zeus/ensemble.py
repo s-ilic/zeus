@@ -449,7 +449,8 @@ class EnsembleSampler:
             iterations=1,
             thin=1,
             thin_by=1,
-            progress=True):
+            progress=True,
+            output_raw=False):
         '''
         Advance the chain as a generator. The current iteration index of the generator is given by the ``sampler.iteration`` property.
 
@@ -579,6 +580,11 @@ class EnsembleSampler:
                 Z_R = np.empty(int(self.nwalkers/2))
                 X_R = np.empty((int(self.nwalkers/2),self.ndim))
 
+                # If requested, initialize array for raw outputs
+                if output_raw:
+                    Z_raw = np.array([])
+                    X_raw = np.empty((0, self.ndim))
+
                 cnt = 0
                 # Stepping-Out procedure
                 while len(mask_J[mask_J])>0 or len(mask_K[mask_K])>0:
@@ -611,6 +617,9 @@ class EnsembleSampler:
                         #Z_LR_masked = np.array(list(self.distribute(self.logprob_fn, np.concatenate([X_L[mask_J],X_R[mask_K]]))))
                         Z_L[mask_J] = Z_LR_masked[:X_L[mask_J].shape[0]]
                         Z_R[mask_K] = Z_LR_masked[X_L[mask_J].shape[0]:]
+                        if output_raw:
+                            X_raw = np.row_stack((X_raw, X_L[mask_J], X_R[mask_K]))
+                            Z_raw = np.concatenate((Z_raw, Z_L[mask_J], Z_R[mask_K]))
 
                     for j in indeces[mask_J]:
                         ncall += 1
@@ -654,6 +663,10 @@ class EnsembleSampler:
                         #Z_prime[mask] = np.array(list(self.distribute(self.logprob_fn, X_prime[mask])))
                     else:
                         Z_prime[mask], blobs_prime[mask] = self.compute_log_prob(X_prime[mask])
+
+                    if output_raw:
+                        X_raw = np.row_stack((X_raw, X_L[mask_J], X_R[mask_K]))
+                        Z_raw = np.concatenate((Z_raw, Z_L[mask_J], Z_R[mask_K]))
 
                     # Count LogProb calls
                     ncall += len(mask[mask])
@@ -714,7 +727,7 @@ class EnsembleSampler:
 
             # Yield current state
             if (i+1) % self.ncheckpoint == 0:
-                yield (X, Z, blobs)
+                yield (X, Z, blobs, X_raw, Z_raw)
 
         # Close progress bar
         if progress:
